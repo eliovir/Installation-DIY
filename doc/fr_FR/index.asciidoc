@@ -1,0 +1,3 @@
+== Installation en Do-It-Yourself
+include::begin.asciidoc[]
+
