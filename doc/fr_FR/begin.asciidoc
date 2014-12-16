@@ -51,7 +51,11 @@ Voici donc les commandes pour une installation type sous Raspberry  (en root):
 .Mode simple
 
 ----
-wget -q http://git.jeedom.fr/jeedom/core/raw/stable/install/install.sh; sudo chmod 777 install.sh; sudo ./install.sh
+sudo apt-get update
+sudo apt-get dist-upgrade
+wget -q https://raw.githubusercontent.com/jeedom/core/stable/install/install.sh
+sudo chmod 777 install.sh
+sudo ./install.sh
 ----
 
 Et vous n’avez plus qu’a suivre les instructions
@@ -70,7 +74,7 @@ apt-get install nodejs php5-common php5-fpm php5-cli php5-curl php5-json php5-my
 sudo mkdir -p /usr/share/nginx/www
 cd /usr/share/nginx/www
 sudo chown www-data:www-data -R /usr/share/nginx/www
-sudo -u www-data -H git clone –depth=1 -b stable http://git.jeedom.fr/jeedom/core.git jeedom
+sudo -u www-data -H git clone –depth=1 -b stable https://github.com/jeedom/core.git jeedom
 sudo chmod 775 -R /usr/share/nginx/www
 
 mkdir /usr/share/nginx/www/jeedom/core/class/../../tmp
