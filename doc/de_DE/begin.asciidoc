@@ -1,0 +1,229 @@
+Das ist eine kleine Einführung, um mit Jeedom gut zu starten (weil Jeedom auf den ersten Blick ein wenig erschrecken kann).  
+
+Zuerst erkläre ich welche Materialien zum Start benötigt werden :
+
+=== Die fertige Box
+
+- Mini : http://www.domadoo.fr/fr/informatique/2575-jeedom-pack-de-demarrage-jeedom-mini-z-wave.html
+- Mini + RFXCOM : http://www.domadoo.fr/fr/informatique/2576-jeedom-pack-de-demarrage-jeedom-mini-z-wave-rfxcom.html
+- vorinstallierte SD-Karte : http://www.domadoo.fr/fr/informatique/2571-jeedom-carte-micro-sd-avec-logiciel-jeedom-pre-installe.html
+
+==== Eigenbau
+
+===== Das Material
+
+Le plus simple du Z-wave partout il faut :
+
+- Raspberry  ~ 40 €
+- Razberry ~ 60 €
+- Eine SD-Karte ~ 7 €
+- USB-Stromversorgung ~ 8 €
+
+Insgesamt 115 € für eine Open-Source Home-Automation-Box  mit vollständiger Kontrolle der Installation.
+
+ein wenig effizienter (mit der gleichen Gelegenheit teurer und etwas komplizierter einzurichten)
+
+- Cubieboard  ~ 70 €
+- Razberry ~ 60 €
+- USB-Stromversorgung ~ 8 €
+
+Mit 138 € teurer, aber mit einem deutlich leistungsfähigeren System (obwohl Jeedom unter einem Raspberry völlig verwendbar ist, muss man zugeben, dass der Raspberry für die Anspruchsvollsten ein wenig kurzatmig ist)
+
+Man muss den Razberry installieren (vorher muß auf dem Raspberry oder Cubieboard das Debian Betriebssystem Installiert sein)
+
+
+----
+wget -q -O – razberry.z-wave.me/install | sudo bash
+----
+
+Um Jeedom zu installieren befolgen Sie einfach die Erläuterungen auf der Seite
+
+Jeedom ist danach mit allen Geräten kompatiebel die der Razberry auch erkennt(solche, die getestet wurden sind zB.: Fibaro Wandstecker, Fibaro Dimmer, Fibaro 2 Relais Schalter, Everspring ST814, Aeon Multisensor ).
+
+Dann haben Sie Zugriff auf alle Funktionen der Module.
+
+===== Installation
+
+Partie au combien importante : wie das Projekt installieren?
+
+Die folgenden Anweisungen sind nur für ubuntu/debian gültig, sie müssen also für andere Linux Systeme angepasst werden(Ich habe Jeedom noch nie mit Windows getestet obwohl in der Theorie müsste es mit einigen Änderungen funktionieren).
+
+Hier sind die typischen Befehle für eine Installation auf dem Raspberry (als root):
+
+.einfacher Modus
+
+----
+sudo apt-get update
+sudo apt-get dist-upgrade
+wget -q https://raw.githubusercontent.com/jeedom/core/stable/install/install.sh
+sudo chmod 777 install.sh
+sudo ./install.sh
+----
+
+Und einfach den Anweisungen folgen
+
+Dann gehen Sie zu Maschine_IP/jeedom (dann einloggen mit admin/admin)
+
+.detaillierter Modus
+Wiederherstellung von Dateien
+
+----
+apt-get update
+apt-get install git git-core git-man
+apt-get install nginx-common  nginx-full
+apt-get install mysql-client mysql-common mysql-server mysql-server-core-5.5
+apt-get install nodejs php5-common php5-fpm php5-cli php5-curl php5-json php5-mysql
+sudo mkdir -p /usr/share/nginx/www
+cd /usr/share/nginx/www
+sudo chown www-data:www-data -R /usr/share/nginx/www
+sudo -u www-data -H git clone –depth=1 -b stable https://github.com/jeedom/core.git jeedom
+sudo chmod 775 -R /usr/share/nginx/www
+
+mkdir /usr/share/nginx/www/jeedom/core/class/../../tmp
+
+chmod 777 -R /usr/share/nginx/www/jeedom/core/class/../../tmp
+cd jeedom
+sudo cp jeedom /etc/init.d/
+sudo chmod +x /etc/init.d/jeedom
+sudo update-rc.d jeedom defaults
+sudo service jeedom start
+----
+
+.Konfiguration der Datenbank
+Verbindung zu MySQL (mit dem vorher getippten Passwort) :
+
+
+----
+mysql -uroot -p
+----
+
+Erstellen von MySQL-Benutzer (vergessen Sie nicht, zu ersetzen PASSWORT # # mit dem gewünschten Passwort) :
+
+
+----
+CREATE USER ‘jeedom’@’localhost’ IDENTIFIED BY ‘#PASSWORD#';
+CREATE DATABASE jeedom;
+GRANT ALL PRIVILEGES ON jeedom.* TO ‘jeedom’@’localhost’
+----
+
+Installieren der Datenbank
+Gehen Sie in das Jeedom Installationsverzeichnis 
+
+
+----
+cd /usr/share/nginx/www/jeedom
+----
+
+Kopieren Sie die Datei core/config/common.config.sample.php en core/config/common.config.php
+
+
+----
+sudo -u www-data -H cp core/config/common.config.sample.php core/config/common.config.php
+----
+
+Bearbeiten Sie die Konfigurationsdatei, um die Verbindungsinformationen in die Datenbank einzufügen
+
+
+----
+vi core/config/common.config.php
+----
+
+Man muss genau das TODO durch das vorher getippte Passwort ergänzen. Speichern Sie und starten Sie die Installation :
+
+
+----
+php install/install.php
+----
+
+===== NginX Konfiguration
+
+----
+Bearbeiten Sie die Datei /etc/nginx/sites-available/default
+----
+
+
+----
+vi /etc/nginx/sites-available/default
+----
+
+Dann fügen Sie die folgenden Zeilen zwischen "Server {" und schließenden Tag "}"
+
+
+----
+location / {
+try_files $uri $uri/ /index.html /index.php;
+}
+
+location /nodeJS/ {
+proxy_set_header X-NginX-Proxy true;
+proxy_pass http://127.0.0.1:8070/;
+proxy_http_version 1.1;
+proxy_set_header Upgrade $http_upgrade;
+proxy_set_header Connection “upgrade”;
+proxy_set_header Host $host;
+proxy_redirect off;
+}
+
+location /socket.io/ {
+proxy_pass http://127.0.0.1:8070/socket.io/;
+proxy_http_version 1.1;
+proxy_set_header Upgrade $http_upgrade;
+proxy_set_header Connection “upgrade”;
+proxy_set_header Host $host;
+proxy_redirect off;
+}
+
+location ~ \.php$ {
+try_files $uri =404;
+fastcgi_pass unix:/var/run/php5-fpm.sock;
+fastcgi_index index.php;
+include fastcgi_params;
+}
+----
+
+.Restart NginX
+
+
+----
+sudo service nginx restart
+----
+
+
+Von dort sollten Sie in der Lage sein, auf Jeedom IP_MASCHINE/jeedom als Kennung mit admin/admin zugreifen. (403 Fehler beim Versuch IP_MACHINE/jeedom/index.php)
+
+Jeedom Crontab Aufgaben Hinzufügen
+
+Wir müssen die folgende Zeile in der crontab hinzufügen :
+
+
+----
+* * * * * su --shell=/bin/bash - www-data -c "/usr/bin/php /usr/share/nginx/www/jeedom/core/php/jeeCron.php" >> /dev/null 2>&1
+----
+
+Dazu müssen Sie den folgenden Befehl eingeben:
+
+
+----
+crontab -e
+----
+
+Die Installation ist abgeschlossen
+
+===== Aktualisieren
+Für Updates giebt es 2 Möglichkeiten :
+
+- mit der Befehlszeile
+
+----
+cd /usr/share/nginx/www/jeedom
+php install/install.php
+----
+- Durch die Jeedom Schnittstelle Allgemein -> Verwaltung -> Updates
+
+Also normalerweise sollte das gehen (obwohl ich, es mehrmals schon gemacht, das Verfahren des Kopfes also gemacht habe, wenn es einen kleinsten Fehler oder eine Verbesserung gibt, zögern Sie nicht, es mir zu sagen, ;-)) 
+
+[panel,primary]
+.Ich kann nicht Jeedom Installieren. was soll ich überprüfen?
+--
+Einer der ersten Prüfungen sollte der verfügbare Speicherplatz auf dem Dateisystem sein.
+--
